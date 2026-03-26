@@ -102,7 +102,7 @@
           spec:
             podSelector:
               matchLabels:
-                "osac.io/security-group/{{ sg_name }}": ""
+                osac.io/security-group: "{{ sg_name }}"
             policyTypes: "{{ policy_types }}"
             ingress: "{{ ingress_policy_rules }}"
             egress: "{{ egress_policy_rules }}"
