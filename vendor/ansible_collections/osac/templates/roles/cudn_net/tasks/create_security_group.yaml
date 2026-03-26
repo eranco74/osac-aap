@@ -48,46 +48,28 @@
 
 - name: Build ingress rules for NetworkPolicy
   ansible.builtin.set_fact:
-    ingress_policy_rules: >-
-      {{ ingress_policy_rules + [translated_rule] }}
+    ingress_policy_rules: "{{ ingress_policy_rules + [_rule] }}"
   vars:
-    translated_rule: >-
-      {% set result = {} %}
-      {% if item.sourceCidr is defined and item.sourceCidr | length > 0 %}
-        {% set _ = result.update({'from': [{'ipBlock': {'cidr': item.sourceCidr}}]}) %}
-      {% endif %}
-      {% if item.protocol != 'icmp' and item.protocol != 'all' %}
-        {% if item.portFrom is defined %}
-          {% set port_spec = {'protocol': item.protocol | upper, 'port': item.portFrom} %}
-          {% if item.portTo is defined and item.portTo != item.portFrom %}
-            {% set _ = port_spec.update({'endPort': item.portTo}) %}
-          {% endif %}
-          {% set _ = result.update({'ports': [port_spec]}) %}
-        {% endif %}
-      {% endif %}
-      {{ result }}
+    _has_cidr: "{{ item.sourceCidr is defined and item.sourceCidr | length > 0 }}"
+    _has_port: "{{ item.protocol not in ['icmp', 'all'] and item.portFrom is defined }}"
+    _from_part: "{{ (_has_cidr | bool) | ternary({'from': [{'ipBlock': {'cidr': item.sourceCidr}}]}, {}) }}"
+    _port_base: "{{ {'protocol': item.protocol | upper, 'port': item.portFrom | default(0)} }}"
+    _port_range: "{{ (item.portTo is defined and item.portTo != item.portFrom | default(0)) | ternary({'endPort': item.portTo | default(0)}, {}) }}"
+    _ports_part: "{{ (_has_port | bool) | ternary({'ports': [_port_base | combine(_port_range)]}, {}) }}"
+    _rule: "{{ _from_part | combine(_ports_part) }}"
   loop: "{{ ingress_rules }}"
 
 - name: Build egress rules for NetworkPolicy
   ansible.builtin.set_fact:
-    egress_policy_rules: >-
-      {{ egress_policy_rules + [translated_rule] }}
+    egress_policy_rules: "{{ egress_policy_rules + [_rule] }}"
   vars:
-    translated_rule: >-
-      {% set result = {} %}
-      {% if item.destinationCidr is defined and item.destinationCidr | length > 0 %}
-        {% set _ = result.update({'to': [{'ipBlock': {'cidr': item.destinationCidr}}]}) %}
-      {% endif %}
-      {% if item.protocol != 'icmp' and item.protocol != 'all' %}
-        {% if item.portFrom is defined %}
-          {% set port_spec = {'protocol': item.protocol | upper, 'port': item.portFrom} %}
-          {% if item.portTo is defined and item.portTo != item.portFrom %}
-            {% set _ = port_spec.update({'endPort': item.portTo}) %}
-          {% endif %}
-          {% set _ = result.update({'ports': [port_spec]}) %}
-        {% endif %}
-      {% endif %}
-      {{ result }}
+    _has_cidr: "{{ item.sourceCidr is defined and item.sourceCidr | length > 0 }}"
+    _has_port: "{{ item.protocol not in ['icmp', 'all'] and item.portFrom is defined }}"
+    _to_part: "{{ (_has_cidr | bool) | ternary({'to': [{'ipBlock': {'cidr': item.sourceCidr}}]}, {}) }}"
+    _port_base: "{{ {'protocol': item.protocol | upper, 'port': item.portFrom | default(0)} }}"
+    _port_range: "{{ (item.portTo is defined and item.portTo != item.portFrom | default(0)) | ternary({'endPort': item.portTo | default(0)}, {}) }}"
+    _ports_part: "{{ (_has_port | bool) | ternary({'ports': [_port_base | combine(_port_range)]}, {}) }}"
+    _rule: "{{ _to_part | combine(_ports_part) }}"
   loop: "{{ egress_rules }}"
 
 - name: Build policyTypes array
