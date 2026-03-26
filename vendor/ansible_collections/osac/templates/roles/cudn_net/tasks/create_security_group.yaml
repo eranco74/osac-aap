@@ -26,11 +26,12 @@
       - "osac.openshift.io/virtual-network={{ sg_virtual_network }}"
   register: namespace_lookup
   when: sg_virtual_network | length > 0
+  ignore_errors: true
 
 - name: Extract target namespace names
   ansible.builtin.set_fact:
-    target_namespaces: "{{ namespace_lookup.resources | map(attribute='metadata.name') | list }}"
-  when: sg_virtual_network | length > 0 and namespace_lookup.resources is defined
+    target_namespaces: "{{ namespace_lookup.resources | default([]) | map(attribute='metadata.name') | list }}"
+  when: sg_virtual_network | length > 0 and namespace_lookup is not failed
 
 - name: Display SecurityGroup information
   ansible.builtin.debug:

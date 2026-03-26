@@ -24,11 +24,12 @@
       - "osac.openshift.io/virtual-network={{ sg_virtual_network }}"
   register: target_namespaces_info
   when: sg_virtual_network != ''
+  ignore_errors: true
 
 - name: Set target namespaces fact
   ansible.builtin.set_fact:
     target_namespaces: "{{ target_namespaces_info.resources | default([]) }}"
-  when: sg_virtual_network != ''
+  when: sg_virtual_network != '' and target_namespaces_info is not failed
 
 - name: Display deletion information
   ansible.builtin.debug:
